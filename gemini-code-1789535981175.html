@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전자기 유도 실험 시뮬레이터</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f7fa;
+      color: #333;
+    }
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 12px 15px;
+      gap: 10px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.3rem;
+      color: #2c3e50;
+      flex-shrink: 0;
+    }
+    .main-content {
+      display: flex;
+      flex: 1;
+      gap: 12px;
+      min-height: 0;
+    }
+    .panel {
+      background: #fff;
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .panel-left {
+      flex: 1;
+      max-width: 380px;
+    }
+    .panel-right {
+      flex: 1.5;
+      gap: 10px;
+    }
+    .variables-info {
+      background: #edf2f7;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.35;
+      margin-bottom: 10px;
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .control-group {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+    input[type="number"] {
+      width: 90px;
+      padding: 5px 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 0.85rem;
+    }
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    button {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-start {
+      background-color: #3182ce;
+      color: white;
+    }
+    .btn-start:hover { background-color: #2b6cb0; }
+    .btn-start:disabled { background-color: #a0aec0; cursor: not-allowed; }
+    .btn-reset {
+      background-color: #e53e3e;
+      color: white;
+    }
+    .btn-reset:hover { background-color: #c53030; }
+    
+    #canvas-container {
+      position: relative;
+      flex: 1;
+      min-height: 100px;
+      background-color: #1a202c;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    canvas#animCanvas {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .result-board {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: #e6fffa;
+      border: 1px solid #b2f5ea;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+    .result-board h3 {
+      font-size: 0.85rem;
+      color: #234e52;
+      margin-bottom: 3px;
+    }
+    .result-board p {
+      color: #285e61;
+      line-height: 1.3;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 4px;
+    }
+    .chart-container {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+    }
+    .table-container {
+      height: 140px;
+      overflow-y: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    th, td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #edf2f7;
+    }
+    th {
+      background-color: #f7fafc;
+      color: #4a5568;
+      position: sticky;
+      top: 0;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background-color: #faf5ff;
+    }
+    tr:hover {
+      background-color: #f0fff4;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <h1>전자기 유도 실험 시뮬레이터</h1>
+
+    <div class="main-content">
+      <div class="panel panel-left">
+        <div class="variables-info">
+          <strong>[변인 설정]</strong><br>
+          • 통제변인: 속도, 초기거리(3m), 자석 세기<br>
+          • 조작변인: 코일 감은 수<br>
+          • 종속변인: 유도 기전력 최댓값/최솟값
+        </div>
+
+        <div class="controls">
+          <div class="control-group">
+            <label for="turnsInput">코일 감은 수 (N):</label>
+            <input type="number" id="turnsInput" value="100" min="10" max="1000" step="10">
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button id="startBtn" class="btn-start" onclick="runExperiment()">실험 시작</button>
+          <button class="btn-reset" onclick="resetChart()">데이터 초기화</button>
+        </div>
+
+        <div id="canvas-container">
+          <canvas id="animCanvas"></canvas>
+        </div>
+
+        <div class="result-board" id="resultBoard">
+          <h3>최근 실험 결과</h3>
+          <p>실험을 시작하려면 '실험 시작' 버튼을 누르세요.</p>
+        </div>
+      </div>
+
+      <div class="panel panel-right">
+        <div class="section-title">유도 기전력 - 시간 그래프 (실시간 누적)</div>
+        <div class="chart-container">
+          <canvas id="emfChart"></canvas>
+        </div>
+        
+        <div class="section-title" style="margin-top: 5px;">실험 결과 비교 표</div>
+        <div class="table-container">
+          <table id="resultTable">
+            <thead>
+              <tr>
+                <th>회차</th>
+                <th>코일 감은 수 (N)</th>
+                <th>최댓값 (Max EMF)</th>
+                <th>최솟값 (Min EMF)</th>
+                <th>전압 진폭 (|Max - Min|)</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let animationId = null;
+    let experimentCount = 0;
+    const colors = [
+      '#3182ce', '#e53e3e', '#38a169', '#d69e2e', '#805ad5',
+      '#319795', '#dd6b20', '#d53f8c', '#4a5568', '#2b6cb0'
+    ];
+    let colorIndex = 0;
+
+    const ctx = document.getElementById('emfChart').getContext('2d');
+    const emfChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          x: {
+            title: { display: true, text: '시간 (s)' },
+            type: 'linear',
+            min: 0,
+            max: 2.0
+          },
+          y: {
+            title: { display: true, text: '유도 기전력 V (V)' },
+            suggestedMin: -15,
+            suggestedMax: 15
+          }
+        },
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: { mode: 'index', intersect: false }
+        }
+      }
+    });
+
+    const animCanvas = document.getElementById('animCanvas');
+    const animCtx = animCanvas.getContext('2d');
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvas-container');
+      animCanvas.width = container.clientWidth;
+      animCanvas.height = container.clientHeight;
+      drawScene(-30, parseInt(document.getElementById('turnsInput').value, 10) || 100);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawScene(magnetX, turns) {
+      animCtx.clearRect(0, 0, animCanvas.width, animCanvas.height);
+
+      const w = animCanvas.width;
+      const h = animCanvas.height;
+      const centerY = h / 2;
+
+      const coilX = w * 0.65;
+      const coilRadius = Math.min(h * 0.35, 30);
+      const coilWidth = 45;
+
+      animCtx.strokeStyle = '#d69e2e';
+      animCtx.lineWidth = 3;
+      const visibleTurns = Math.min(Math.max(Math.floor(turns / 20), 3), 20);
+
+      for (let i = 0; i < visibleTurns; i++) {
+        const x = coilX - coilWidth/2 + (i * (coilWidth / visibleTurns));
+        animCtx.beginPath();
+        animCtx.ellipse(x, centerY, 5, coilRadius, 0, 0, 2 * Math.PI);
+        animCtx.stroke();
+      }
+
+      animCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      animCtx.lineWidth = 1;
+      animCtx.beginPath();
+      animCtx.setLineDash([5, 5]);
+      animCtx.moveTo(0, centerY);
+      animCtx.lineTo(w, centerY);
+      animCtx.stroke();
+      animCtx.setLineDash([]);
+
+      const magW = 45;
+      const magH = 18;
+      const magY = centerY - magH / 2;
+
+      animCtx.fillStyle = '#e53e3e';
+      animCtx.fillRect(magnetX, magY, magW / 2, magH);
+      animCtx.fillStyle = '#fff';
+      animCtx.font = 'bold 10px sans-serif';
+      animCtx.fillText('N', magnetX + 5, magY + 13);
+
+      animCtx.fillStyle = '#3182ce';
+      animCtx.fillRect(magnetX + magW / 2, magY, magW / 2, magH);
+      animCtx.fillStyle = '#fff';
+      animCtx.fillText('S', magnetX + magW / 2 + 5, magY + 13);
+    }
+
+    function runExperiment() {
+      const turns = parseInt(document.getElementById('turnsInput').value, 10);
+      if (isNaN(turns) || turns <= 0) {
+        alert('올바른 감은 수를 입력하세요.');
+        return;
+      }
+
+      const startBtn = document.getElementById('startBtn');
+      startBtn.disabled = true;
+
+      const distance0 = 3.0;
+      const speed = 3.0;
+      const duration = 2.0;
+      const fps = 60;
+      const totalSteps = Math.floor(duration * fps);
+
+      let step = 0;
+      experimentCount++;
+
+      let maxEMF = -Infinity;
+      let minEMF = Infinity;
+
+      const color = colors[colorIndex % colors.length];
+      colorIndex++;
+
+      const currentDataset = {
+        label: `실험 #${experimentCount} (${turns}회)`,
+        data: [],
+        borderColor: color,
+        backgroundColor: color,
+        borderWidth: 2,
+        fill: false,
+        pointRadius: 0
+      };
+      emfChart.data.datasets.push(currentDataset);
+
+      if (animationId) cancelAnimationFrame(animationId);
+
+      function animate() {
+        const t = (step / totalSteps) * duration;
+        const xPos = distance0 - speed * t;
+
+        const a = 3.0;
+        const k = 0.005;
+        const emf = -2 * turns * a * speed * xPos * Math.exp(-a * xPos * xPos) * k;
+
+        if (emf > maxEMF) maxEMF = emf;
+        if (emf < minEMF) minEMF = emf;
+
+        currentDataset.data.push({ x: parseFloat(t.toFixed(3)), y: parseFloat(emf.toFixed(3)) });
+        emfChart.update('none');
+
+        const canvasW = animCanvas.width;
+        const screenX = ((3 - xPos) / 6) * canvasW - 22;
+        drawScene(screenX, turns);
+
+        step++;
+
+        if (step <= totalSteps) {
+          animationId = requestAnimationFrame(animate);
+        } else {
+          startBtn.disabled = false;
+
+          const maxValStr = `+${maxEMF.toFixed(3)}`;
+          const minValStr = minEMF.toFixed(3);
+          const ampStr = (maxEMF - minEMF).toFixed(3);
+
+          document.getElementById('resultBoard').innerHTML = `
+            <h3>실험 #${experimentCount} 결과 (감은 수: ${turns}회)</h3>
+            <p>• <strong>최댓값 (Max EMF):</strong> ${maxValStr} V</p>
+            <p>• <strong>최솟값 (Min EMF):</strong> ${minValStr} V</p>
+          `;
+
+          const tableBody = document.getElementById('tableBody');
+          const newRow = document.createElement('tr');
+          newRow.innerHTML = `
+            <td><strong>#${experimentCount}</strong></td>
+            <td>${turns} 회</td>
+            <td style="color: #e53e3e; font-weight: bold;">${maxValStr} V</td>
+            <td style="color: #3182ce; font-weight: bold;">${minValStr} V</td>
+            <td><strong>${ampStr} V</strong></td>
+          `;
+          tableBody.appendChild(newRow);
+
+          const tableContainer = document.querySelector('.table-container');
+          tableContainer.scrollTop = tableContainer.scrollHeight;
+        }
+      }
+
+      animate();
+    }
+
+    function resetChart() {
+      emfChart.data.datasets = [];
+      emfChart.update();
+      colorIndex = 0;
+      experimentCount = 0;
+      document.getElementById('tableBody').innerHTML = '';
+      document.getElementById('resultBoard').innerHTML = `
+        <h3>최근 실험 결과</h3>
+        <p>실험을 시작하려면 '실험 시작' 버튼을 누르세요.</p>
+      `;
+    }
+
+    setTimeout(() => {
+      resizeCanvas();
+    }, 50);
+  </script>
+</body>
+</html>
